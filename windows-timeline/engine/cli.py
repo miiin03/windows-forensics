@@ -9,6 +9,7 @@ from pathlib import Path
 
 from engine.carver.freeblock import carve_freeblocks
 from engine.carver.freelist import carve_freelist
+from engine.carver.slack import carve_slack
 from engine.carver.wal import carve_wal, count_wal_frames
 from engine.dedup import deduplicate
 from engine.discovery import ActivityDbCandidate, find_activitiescache_dbs
@@ -18,7 +19,7 @@ from engine.normalize import normalize_records
 from engine.pages import PageSource
 
 
-_SOURCES = ("all", "live", "freelist", "freeblock", "wal")
+_SOURCES = ("all", "live", "freelist", "freeblock", "wal", "slack")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _wanted(args) -> set[str]:
     selected = args.source or ["all"]
     if "all" in selected:
-        return {"live", "freelist", "freeblock", "wal"}
+        return {"live", "freelist", "freeblock", "wal", "slack"}
     return set(selected)
 
 
@@ -132,6 +133,8 @@ def _process_candidate(candidate: ActivityDbCandidate, args) -> tuple[list[dict]
                     encoding=page_source.header.encoding_name,
                 )
             )
+        if args.phase >= 3 and "slack" in wanted:
+            carved_raw.extend(carve_slack(page_source))
 
     live = normalize_records(live_raw)
     carved = [

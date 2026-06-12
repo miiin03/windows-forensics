@@ -9,6 +9,7 @@ from pathlib import Path
 
 from engine.carver.freeblock import carve_freeblocks
 from engine.carver.freelist import carve_freelist
+from engine.carver.wal import carve_wal, count_wal_frames
 from engine.dedup import deduplicate
 from engine.discovery import ActivityDbCandidate, find_activitiescache_dbs
 from engine.export import build_output, write_json
@@ -17,7 +18,7 @@ from engine.normalize import normalize_records
 from engine.pages import PageSource
 
 
-_SOURCES = ("all", "live", "freelist", "freeblock")
+_SOURCES = ("all", "live", "freelist", "freeblock", "wal")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -61,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _wanted(args) -> set[str]:
     selected = args.source or ["all"]
     if "all" in selected:
-        return {"live", "freelist", "freeblock"}
+        return {"live", "freelist", "freeblock", "wal"}
     return set(selected)
 
 
@@ -98,6 +99,7 @@ def _source_info_for(candidate: ActivityDbCandidate, page_source: PageSource, no
     info["shm_path"] = candidate.shm_path
     info["wal_present"] = bool(info["wal_path"])
     info["vacuum_suspected"] = page_source.header.freelist_count == 0 and not info["wal_present"]
+    info["wal_frames"] = count_wal_frames(candidate.wal_path) if info["wal_present"] else 0
     return info
 
 
@@ -122,6 +124,14 @@ def _process_candidate(candidate: ActivityDbCandidate, args) -> tuple[list[dict]
             carved_raw.extend(carve_freelist(page_source))
         if "freeblock" in wanted:
             carved_raw.extend(carve_freeblocks(page_source))
+        if "wal" in wanted and not args.no_wal and candidate.wal_path:
+            carved_raw.extend(
+                carve_wal(
+                    candidate.wal_path,
+                    page_size=page_source.page_size,
+                    encoding=page_source.header.encoding_name,
+                )
+            )
 
     live = normalize_records(live_raw)
     carved = [

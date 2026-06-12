@@ -1,0 +1,9 @@
+[project]
+name = "windows-timeline-engine"
+version = "0.1.0"
+description = "ActivitiesCache.db forensic parser + deleted-record carving engine"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

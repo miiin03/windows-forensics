@@ -14,6 +14,7 @@ from engine.carver.wal import carve_wal, count_wal_frames
 from engine.dedup import deduplicate
 from engine.discovery import ActivityDbCandidate, find_activitiescache_dbs
 from engine.export import build_output, write_json
+from engine.ui_export import build_ui_output
 from engine.live_parser import read_activity
 from engine.normalize import normalize_records
 from engine.pages import PageSource
@@ -57,6 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     parser.add_argument("--stats-only", action="store_true", help="write envelope without records")
     parser.add_argument("--no-wal", action="store_true", help="do not inspect a companion WAL file")
+    parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="output UI contract JSON (default: timeline_result.json)",
+    )
     return parser
 
 
@@ -176,6 +182,9 @@ def run(args) -> dict | None:
         all_carved.extend(carved)
         source_infos.append(info)
 
+    if getattr(args, "ui", False):
+        return build_ui_output(all_live + all_carved, source_infos)
+
     obj = build_output(all_live, all_carved, source_infos)
     if args.stats_only:
         obj = {k: v for k, v in obj.items() if k != "records"}
@@ -185,8 +194,10 @@ def run(args) -> dict | None:
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.ui and not args.output:
+        args.output = "timeline_result.json"
     if not args.output and not args.stats_only:
-        parser.error("-o/--output is required unless --stats-only is used")
+        parser.error("-o/--output is required unless --stats-only or --ui is used")
     obj = run(args)
     if obj is None:
         return 0

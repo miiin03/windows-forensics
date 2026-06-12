@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 /out
 result.json
+timeline_result.json
 *.db
 *.db-wal
 *.db-shm

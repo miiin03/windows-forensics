@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 분석 대상/산출물 (증거 데이터 — 절대 커밋 금지)
+data/*
+!data/.gitkeep
+db/*
+!db/.gitkeep
+
+# 빌드 산출물
+build/
+dist/
+*.spec
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

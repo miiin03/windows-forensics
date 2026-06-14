@@ -14,9 +14,8 @@ from datetime import datetime, timedelta, timezone
 _KST = timezone(timedelta(hours=9))
 _UTC = timezone.utc
 
-# Windows Timeline was introduced in Windows 10 1803 (Apr 2018); 2010 is a
-# generous lower bound that still rejects epoch-0 / pre-Windows-10 garbage.
-_YEAR_MIN = 2010
+# Lower bound: Windows 10 launched in 2015; 2010 gives generous margin.
+_MIN_DT = datetime(2010, 1, 1, tzinfo=timezone.utc)
 
 # Only strip render-breaking control chars. U+FFFD (replacement char) is
 # intentionally kept: it marks bytes that couldn't be decoded, giving the
@@ -83,17 +82,18 @@ def _utc_to_kst(iso_utc: str | None) -> str | None:
         return None
 
 
-def _ts_kst(iso_utc: str | None, year_max: int) -> str | None:
-    """UTC → KST with range guard [_YEAR_MIN, year_max].
+def _ts_kst(iso_utc: str | None, max_dt: datetime) -> str | None:
+    """UTC → KST with rolling date guard [_MIN_DT, max_dt].
 
-    Returns None for epoch-0 (1970), pre-Windows-10 dates, and implausibly
-    far-future timestamps from corrupted carved cells.
+    Returns None for epoch-0 / pre-2010 dates and for anything after max_dt
+    (analysis time + 2-day clock-skew margin).  Year-granular upper bounds
+    let whole future years through; this catches same-year future dates too.
     """
     if not iso_utc:
         return None
     try:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        if dt.year < _YEAR_MIN or dt.year > year_max:
+        if dt < _MIN_DT or dt > max_dt:
             return None
         return dt.astimezone(_KST).isoformat()
     except (ValueError, TypeError, AttributeError):
@@ -264,7 +264,7 @@ def _detail(record: dict) -> str | None:
 
 # ── Core converter ────────────────────────────────────────────────────────────
 
-def _to_activity(record: dict, *, year_max: int = 2030) -> dict:
+def _to_activity(record: dict, *, max_dt: datetime) -> dict:
     app_id, app_name = _parse_appid(record.get("AppId_raw"))
     if not app_name:
         app_name = _strip_control(record.get("app_name"))
@@ -289,9 +289,9 @@ def _to_activity(record: dict, *, year_max: int = 2030) -> dict:
         "url": _strip_control(_url(record)),
         "detail": _detail(record),
         "secret_value": None,
-        "start_time_kst": _ts_kst(start_iso, year_max),
-        "end_time_kst": _ts_kst(end_iso, year_max),
-        "last_modified_kst": _ts_kst(lmt_iso, year_max),
+        "start_time_kst": _ts_kst(start_iso, max_dt),
+        "end_time_kst": _ts_kst(end_iso, max_dt),
+        "last_modified_kst": _ts_kst(lmt_iso, max_dt),
         "raw_payload_b64": None,
     }
 
@@ -316,11 +316,13 @@ def build_ui_output(
         analyzed_at = datetime.now(tz=_UTC).isoformat().replace("+00:00", "Z")
 
     try:
-        year_max = datetime.fromisoformat(analyzed_at.replace("Z", "+00:00")).year + 1
+        analyzed_dt = datetime.fromisoformat(analyzed_at.replace("Z", "+00:00"))
     except (ValueError, TypeError):
-        year_max = 2030
+        analyzed_dt = datetime.now(tz=_UTC)
+    # Activity timestamps must not exceed analysis time + 2-day clock-skew margin.
+    max_dt = analyzed_dt + timedelta(days=2)
 
-    activities = [_to_activity(r, year_max=year_max) for r in records]
+    activities = [_to_activity(r, max_dt=max_dt) for r in records]
     normal_n = sum(1 for a in activities if a["source"] == "normal")
     carved_n = sum(1 for a in activities if a["source"] == "carved")
 

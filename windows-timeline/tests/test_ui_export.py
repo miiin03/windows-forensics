@@ -704,21 +704,54 @@ def test_timestamp_year_1907_is_null():
     assert result["activities"][0]["start_time_kst"] is None
 
 
-def test_timestamp_year_2030_far_future_is_null():
-    """Bug 3: year beyond analyzed_at+1 → null."""
+def test_timestamp_far_future_is_null():
+    """Bug 3: far-future year → null."""
     rec = _live()
     rec["timestamps"]["StartTime"] = {"epoch": 9999999999, "iso8601": "2286-11-20T17:46:39Z"}
     result = build_ui_output([rec], [], analyzed_at="2026-06-12T00:00:00Z")
-    # analyzed_at year=2026 → year_max=2027; 2286 > 2027 → None
     assert result["activities"][0]["start_time_kst"] is None
 
 
 def test_timestamp_valid_2024_not_null():
-    """Bug 3: valid 2024 timestamp passes through."""
+    """Bug 3: valid past timestamp passes through."""
     rec = _live(start_iso="2024-06-11T12:00:00Z")
     result = build_ui_output([rec], [], analyzed_at="2026-06-12T00:00:00Z")
     assert result["activities"][0]["start_time_kst"] is not None
     assert "2024" in result["activities"][0]["start_time_kst"]
+
+
+# ── Bug 11: rolling date upper bound (same-year future timestamps) ─────────────
+
+def test_timestamp_400_days_future_is_null():
+    """Bug 11: StartTime = analyzed_at + 400 days → null (exceeds 2-day margin)."""
+    rec = _live()
+    rec["timestamps"]["StartTime"] = {"epoch": 0, "iso8601": "2027-07-22T00:00:00Z"}
+    result = build_ui_output([rec], [], analyzed_at="2026-06-14T00:00:00Z")
+    assert result["activities"][0]["start_time_kst"] is None
+
+
+def test_timestamp_yesterday_is_not_null():
+    """Bug 11: StartTime = analyzed_at - 1 day → valid."""
+    rec = _live()
+    rec["timestamps"]["StartTime"] = {"epoch": 0, "iso8601": "2026-06-13T12:00:00Z"}
+    result = build_ui_output([rec], [], analyzed_at="2026-06-14T00:00:00Z")
+    assert result["activities"][0]["start_time_kst"] is not None
+
+
+def test_timestamp_10_days_future_is_null():
+    """Bug 11: StartTime = analyzed_at + 10 days → null (exceeds 2-day margin)."""
+    rec = _live()
+    rec["timestamps"]["StartTime"] = {"epoch": 0, "iso8601": "2026-06-24T00:00:00Z"}
+    result = build_ui_output([rec], [], analyzed_at="2026-06-14T00:00:00Z")
+    assert result["activities"][0]["start_time_kst"] is None
+
+
+def test_timestamp_within_2day_margin_is_not_null():
+    """Bug 11: StartTime = analyzed_at + 1 day → valid (within 2-day clock-skew margin)."""
+    rec = _live()
+    rec["timestamps"]["StartTime"] = {"epoch": 0, "iso8601": "2026-06-15T00:00:00Z"}
+    result = build_ui_output([rec], [], analyzed_at="2026-06-14T00:00:00Z")
+    assert result["activities"][0]["start_time_kst"] is not None
 
 
 def test_no_1970_in_end_time_kst(make_activity_db):

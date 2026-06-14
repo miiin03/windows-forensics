@@ -50,11 +50,23 @@ ollama pull qwen2.5:7b      # 기본 (품질↑ 원하면 qwen2.5:14b)
 python -m src.app
 ```
 
-## .exe 빌드 (Windows에서)
-```bash
-pyinstaller --onefile --windowed --add-data "ui;ui" src/app.py
-# → dist/app.exe
+## .exe 빌드 (Windows에서만)
+> ⚠ **반드시 Windows 네이티브 Python**에서 빌드 (WSL/Linux venv 로 빌드하면 .exe 가 아니라 리눅스
+> 실행파일이 나오고, pywebview 도 Windows GUI 라 안 됨).
+
+```powershell
+# Windows PowerShell, 프로젝트 루트에서
+python -m venv .venv-win
+.\.venv-win\Scripts\Activate.ps1
+pip install -r requirements.txt
+pyinstaller app.spec            # 빌드 스펙 사용 (hiddenimports/데이터 동봉 포함)
+# → dist\app.exe
 ```
+- `app.spec` 가 `ui/`·`vendor/` 동봉 + sklearn/scipy/Evtx 등 동적 import 를 잡아준다.
+- (선택) `vendor/OllamaSetup.exe` 를 두면 첫 실행 때 Ollama 를 다운로드 없이 무인 설치(`vendor/README.md`).
+- exe 는 내장 HTTP 엔진(127.0.0.1:8765)을 띄우고 번들 UI 를 pywebview 창으로 연다.
+- 모델(qwen2.5:7b, 4.7GB)은 exe 미포함 → **첫 실행 시 1회 다운로드**(설치 마법사 진행률).
+- 빌드가 창 없이 죽으면 `app.spec` 의 `console=False` → `True` 로 바꿔 콘솔 로그 확인.
 
 ---
 

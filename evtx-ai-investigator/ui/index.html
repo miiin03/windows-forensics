@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVTX AI 이상행위 조사관 (DEV 임시 UI)</title>
+<style>
+  :root{
+    --bg:#f3f4f6; --panel:#ffffff; --panel2:#f6f7f9; --border:#e3e6eb;
+    --txt:#1b2330; --muted:#6b7280; --accent:#2563eb;
+    --normal:#15803d; --carved:#b45309; --enc:#dc2626; --dec:#7c3aed;
+    --shadow:0 1px 3px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+  header{background:linear-gradient(90deg,#ffffff,#f4f6f9);padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.2px}
+  header .badge-tool{font-size:11px;color:var(--muted)}
+  .src-load{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .src-load label{font-size:12px;color:var(--muted)}
+  input[type=file]{font-size:12px;color:var(--muted)}
+  /* ---- 통합 분석 바 (상단) ---- */
+  .toolbar{display:flex;align-items:center;gap:12px;padding:10px 22px;background:#eef2ff;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .tb-group{display:flex;align-items:center;gap:7px}
+  .tb-label{font-size:11px;font-weight:700;color:var(--muted)}
+  .tb-sep{width:1px;height:26px;background:var(--border)}
+  .toolbar input[type=text]{min-width:220px;background:#fff;border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:12px;font-family:Consolas,monospace}
+  .toolbar button{border:none;background:var(--accent);color:#fff;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .toolbar button:disabled{opacity:.5;cursor:default}
+  .toolbar button.ghost{background:var(--panel);color:var(--txt);border:1px solid var(--border)}
+  .tb-status{margin-left:auto;font-size:12px;color:var(--muted)}
+  .tb-status button{margin-left:6px;padding:3px 8px;font-size:11px;border:none;background:#4f46e5;color:#fff;border-radius:5px;cursor:pointer}
+  .evtx-anom{font-size:12px;font-weight:700}
+  .meta{display:flex;gap:12px;padding:12px 22px;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--border)}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;min-width:90px}
+  .stat .n{font-size:20px;font-weight:700}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+  .stat.total .n{color:var(--accent)} .stat.normal .n{color:var(--normal)}
+  .stat.carved .n{color:var(--carved)} .stat.enc .n{color:var(--enc)} .stat.dec .n{color:var(--dec)}
+  .meta-info{margin-left:auto;font-size:11px;color:var(--muted);text-align:right;line-height:1.6;max-width:46%}
+  .filters{display:flex;gap:9px;padding:11px 22px;flex-wrap:wrap;align-items:center;background:var(--panel);border-bottom:1px solid var(--border)}
+  .filters input,.filters select{background:var(--panel2);border:1px solid var(--border);color:var(--txt);padding:7px 10px;border-radius:6px;font-size:13px}
+  .filters input[type=text]{min-width:200px}
+  .sep{width:1px;height:24px;background:var(--border);margin:0 3px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);cursor:pointer;font-size:12px;user-select:none}
+  .chip.off{opacity:.35}
+  .chip .dot{width:9px;height:9px;border-radius:50%}
+  .chip.normal .dot{background:var(--normal)} .chip.carved .dot{background:var(--carved)}
+  .chip.encrypted .dot{background:var(--enc)} .chip.decrypted .dot{background:var(--dec)}
+  .wrap{display:flex}
+  main{flex:1;padding:18px 22px 60px;overflow:auto}
+  .daygroup{margin-bottom:26px}
+  .daygroup h2{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 12px;padding-bottom:6px;border-bottom:1px dashed var(--border)}
+  .tl{position:relative;margin-left:14px;border-left:2px solid var(--border);padding-left:22px}
+  .card{position:relative;background:var(--panel);border:1px solid var(--border);border-left-width:4px;border-radius:9px;padding:11px 14px;margin-bottom:12px;cursor:pointer;box-shadow:var(--shadow);transition:.12s}
+  .card:hover{border-color:var(--accent);transform:translateX(2px)}
+  .card.carved{border-top-style:dashed;border-right-style:dashed;border-bottom-style:dashed}
+  .card::before{content:"";position:absolute;left:-29px;top:16px;width:11px;height:11px;border-radius:50%;border:2px solid var(--bg)}
+  .card.st-normal::before{background:var(--normal)} .card.st-carved::before{background:var(--carved)}
+  .card.st-encrypted::before{background:var(--enc)} .card.st-decrypted::before{background:var(--dec)}
+  .card .row1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card .ico{font-size:16px}
+  .card .time{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .card .app{font-weight:700}
+  .b{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+  .b.normal{background:rgba(21,128,61,.12);color:var(--normal)}
+  .b.carved{background:rgba(180,83,9,.12);color:var(--carved)}
+  .b.encrypted{background:rgba(220,38,38,.10);color:var(--enc)}
+  .b.decrypted{background:rgba(124,58,237,.10);color:var(--dec)}
+  .b.fmt{background:var(--panel2);color:var(--muted);border:1px solid var(--border)}
+  .card .ttl{margin-top:5px;font-size:13px}
+  .card .url{margin-top:3px;font-size:12px;color:var(--accent);word-break:break-all;opacity:.9}
+  .card .secret{margin-top:3px;font-size:12px;color:var(--dec)}
+  .empty{color:var(--muted);text-align:center;padding:60px 0}
+  /* 24h clock */
+  .clockSec{padding:16px 22px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .clk-head{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:14px}
+  .clk-head select{background:var(--panel2);border:1px solid var(--border);color:var(--txt);padding:5px 9px;border-radius:6px;font-size:12px}
+  .clk-head .muted{color:var(--muted);font-size:12px}
+  .clk-wrap{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+  .seg{cursor:pointer;transition:opacity .1s}
+  .seg:hover{opacity:.8;stroke:#1b2330 !important;stroke-width:1.4 !important}
+  .legend{display:flex;flex-direction:column;gap:5px;max-height:280px;overflow:auto;font-size:12px}
+  .lg{display:flex;align-items:center;gap:7px;color:var(--txt)}
+  .lg .sw{width:12px;height:12px;border-radius:3px;flex:none}
+  .clktip{position:fixed;display:none;z-index:99;background:#ffffff;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;max-width:280px;pointer-events:none;line-height:1.5;box-shadow:0 4px 14px rgba(16,24,40,.14);color:var(--txt)}
+  .clktip .muted{color:var(--muted)}
+  aside{width:0;overflow:hidden;background:var(--panel);border-left:1px solid var(--border);transition:width .18s}
+  aside.open{width:390px}
+  .detail{padding:18px;width:390px}
+  .detail h3{margin:0 0 14px;font-size:15px}
+  .detail .close{float:right;cursor:pointer;color:var(--muted);font-size:18px;line-height:1}
+  .kv{margin-bottom:10px}
+  .kv .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .kv .v{font-size:13px;word-break:break-all;margin-top:2px}
+  .kv .v.mono{font-family:Consolas,monospace;font-size:11px;background:var(--panel2);padding:6px 8px;border-radius:5px;border:1px solid var(--border)}
+  .reveal{cursor:pointer;color:var(--dec);font-size:11px;margin-left:6px;text-decoration:underline}
+
+  /* ---------- AI 코파일럿 ---------- */
+  #cpBtn{position:fixed;right:22px;bottom:24px;z-index:96;width:54px;height:54px;border-radius:50%;
+    border:none;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;font-size:24px;cursor:pointer;
+    box-shadow:0 6px 18px rgba(37,99,235,.35);transition:transform .12s}
+  #cpBtn:hover{transform:scale(1.06)}
+  #copilot{position:fixed;top:0;right:0;height:100%;width:min(400px,100vw);z-index:97;display:flex;flex-direction:column;
+    background:var(--panel);border-left:1px solid var(--border);box-shadow:-8px 0 28px rgba(16,24,40,.12);
+    transform:translateX(105%);transition:transform .2s ease}
+  #copilot.open{transform:translateX(0)}
+  .cp-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);
+    background:linear-gradient(90deg,#ffffff,#f4f6f9)}
+  .cp-head .ttl{font-weight:700;font-size:14px}
+  .cp-head .sub{font-size:11px;color:var(--muted)}
+  .cp-head .cp-close{margin-left:auto;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;border:none;background:none}
+  .cp-msgs{flex:1;overflow:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px;background:var(--panel2)}
+  .cp-msg{max-width:86%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .cp-msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .cp-msg.ai{align-self:flex-start;background:var(--panel);border:1px solid var(--border);border-bottom-left-radius:4px;box-shadow:var(--shadow)}
+  .cp-msg.err{align-self:flex-start;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);color:var(--enc)}
+  .cp-typing{align-self:flex-start;color:var(--muted);font-size:12px;padding:4px 8px}
+  .cp-typing .d{display:inline-block;animation:cpb 1s infinite}
+  .cp-typing .d:nth-child(2){animation-delay:.15s}.cp-typing .d:nth-child(3){animation-delay:.3s}
+  @keyframes cpb{0%,60%,100%{opacity:.25}30%{opacity:1}}
+  .cp-quick{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--border);background:var(--panel)}
+  .cp-quick button{font-size:11px;padding:5px 10px;border-radius:14px;border:1px solid var(--border);background:var(--panel2);color:var(--txt);cursor:pointer}
+  .cp-quick button:hover{border-color:var(--accent);color:var(--accent)}
+  .cp-input{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border);background:var(--panel)}
+  .cp-input textarea{flex:1;resize:none;height:44px;max-height:120px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:8px;padding:10px 12px;font-size:13px;color:var(--txt);font-family:inherit;outline:none}
+  .cp-input textarea:focus{border-color:var(--accent)}
+  .cp-input button{border:none;background:var(--accent);color:#fff;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer}
+  .cp-input button:disabled{opacity:.5;cursor:default}
+</style>
+</head>
+<body>
+<header>
+  <h1>🕘 Windows Activity Forensics</h1>
+  <span class="badge-tool" id="toolVer"></span>
+</header>
+
+<!-- 통합 분석 바 (part-1 타임라인 + part-3 EVTX) -->
+<div class="toolbar">
+  <div class="tb-group">
+    <span class="tb-label">① 사용자 타임라인</span>
+    <input type="text" id="tlPath" placeholder="ActivitiesCache.db 경로 직접 입력">
+    <button id="tlPathBtn">📁 경로 분석</button>
+    <button id="startBtn" class="ghost" title="내 PC ActivitiesCache.db 자동 탐색">🖥️ 내 PC 자동</button>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <span class="tb-label">② 보안 이벤트(EVTX)</span>
+    <input type="text" id="evtxPath" placeholder=".evtx 경로 직접 입력">
+    <button id="analyzeBtn">🛡️ 경로 분석</button>
+    <button id="autoBtn" class="ghost" title="내 PC 보안 로그 자동 수집(관리자 권장)">🖥️ 내 PC 자동</button>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <span id="anomBadge" class="evtx-anom"></span>
+  </div>
+  <span class="tb-status" id="setupStatus">엔진 확인 중…</span>
+</div>
+
+<div class="meta" id="metaStrip"></div>
+
+<div class="filters">
+  <input type="text" id="kw" placeholder="🔍 키워드 (앱·제목·URL·detail)">
+  <select id="appSel"><option value="">전체 앱/브라우저</option></select>
+  <select id="sortSel">
+    <option value="asc">시각 ↑</option>
+    <option value="desc">시각 ↓</option>
+  </select>
+  <span class="sep"></span>
+  <span id="artChips"></span>
+  <span class="sep"></span>
+  <span class="chip normal" data-st="normal"><span class="dot"></span>정상</span>
+  <span class="chip carved" data-st="carved"><span class="dot"></span>카빙</span>
+</div>
+
+<section class="clockSec" id="clockBox"></section>
+<div class="clktip" id="clkTip"></div>
+
+<div class="wrap">
+  <main id="timeline"></main>
+  <aside id="aside"><div class="detail" id="detail"></div></aside>
+</div>
+
+<!-- AI 코파일럿 (part-3 로컬 엔진 /ask 연결) -->
+<button id="cpBtn" title="AI 조사관 열기">🤖</button>
+<div id="copilot">
+  <div class="cp-head">
+    <span style="font-size:20px">🤖</span>
+    <div>
+      <div class="ttl">EVTX AI 조사관</div>
+      <div class="sub">로컬 LLM(Qwen2.5) · 적재된 윈도우 이벤트 기반 침해 분석</div>
+    </div>
+    <button class="cp-close" id="cpClose" title="닫기">✕</button>
+  </div>
+  <div class="cp-msgs" id="cpMsgs">
+    <div class="cp-msg ai">윈도우 이벤트 로그(EVTX)를 분석하는 AI 조사관입니다.
+먼저 위 바에서 .evtx 경로를 넣고 "분석 시작"을 누르세요. 그다음 질문하세요:
+• "로그인 실패가 많았던 계정 있어?"
+• "감사 로그가 삭제된 적 있어?"
+• "이상 징후 있는 시간대 보여줘"</div>
+  </div>
+  <div class="cp-quick">
+    <button data-q="로그인 실패가 많았던 계정이나 무차별대입 의심이 있어?">🚨 로그온 이상</button>
+    <button data-q="감사 로그 삭제나 계정 생성 같은 고위험 이벤트가 있었어?">🧩 고위험 이벤트</button>
+    <button data-q="전체 이벤트를 요약하고 의심 구간을 짚어줘.">📋 전체 요약</button>
+  </div>
+  <div class="cp-input">
+    <textarea id="cpText" placeholder="질문을 입력하세요… (Enter 전송, Shift+Enter 줄바꿈)"></textarea>
+    <button id="cpSend">전송</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   part-3 EVTX 엔진 연동 (로컬 HTTP). 엔진: python -m src.server → 127.0.0.1:8765
+   .exe 실행 시 app.py 가 이 서버를 내장 기동한다.
+   ========================================================================= */
+const ENGINE = "http://127.0.0.1:8765";
+
+async function checkEngine(){
+  const el = document.getElementById("setupStatus");
+  try{
+    const h = await fetch(ENGINE+"/health").then(r=>r.json());
+    const s = await fetch(ENGINE+"/setup/status").then(r=>r.json());
+    if(s.needs_setup){
+      el.innerHTML = "⚙ 로컬 LLM 셋업 필요(첫 1회) <button id='setupBtn'>설치/다운로드</button>";
+      el.querySelector("#setupBtn").onclick = startSetup;
+    }else{
+      el.textContent = `✅ 엔진 연결됨 · DB ${h.events??0}건 · 모델 ${s.model_ready?"준비됨":"미준비"}`;
+    }
+  }catch(e){
+    el.textContent = "❌ 엔진 미연결 — 'python -m src.server' 실행 또는 .exe 로 구동하세요";
+  }
+}
+
+async function startSetup(){
+  const el = document.getElementById("setupStatus");
+  try{ await fetch(ENGINE+"/setup/start",{method:"POST"}); }catch(e){ el.textContent="❌ 셋업 시작 실패"; return; }
+  const t = setInterval(async ()=>{
+    let p; try{ p = await fetch(ENGINE+"/setup/progress").then(r=>r.json()); }catch(e){ return; }
+    el.textContent = `⚙ ${p.status||p.phase} ${p.pct||0}%`;
+    if(p.done){
+      clearInterval(t);
+      if(p.ok){ el.textContent="✅ 셋업 완료"; checkEngine(); }
+      else el.textContent = "❌ 셋업 실패: "+(p.error||"");
+    }
+  }, 1500);
+}
+
+function renderAnom(a){
+  const el = document.getElementById("anomBadge");
+  if(!a){ el.textContent=""; return; }
+  const sec = (a.security_findings||[]).length;
+  if(a.high_risk){
+    el.innerHTML = `🔴 고위험${sec?` · 의심 이벤트 ${sec}종`:""}${a.anomaly_windows?` · 이상구간 ${a.anomaly_windows}개`:""}`;
+  }else if(sec>0){
+    el.innerHTML = `⚠ 의심 이벤트 ${sec}종${a.anomaly_windows?` · 이상구간 ${a.anomaly_windows}개`:""}`;
+  }else if(a.anomaly_windows>0){
+    el.innerHTML = `⚠ 이상구간 ${a.anomaly_windows}개`;
+  }else{
+    el.innerHTML = "🟢 이상 없음" + (a.fitted===false ? " (ML: 데이터 적음)" : "");
+  }
+}
+
+async function analyzeEvtx(){
+  const path = document.getElementById("evtxPath").value.trim();
+  if(!path){ alert("분석할 .evtx 전체 경로를 입력하세요."); return; }
+  const btn = document.getElementById("analyzeBtn");
+  btn.disabled = true; btn.textContent = "분석 중…";
+  try{
+    const r = await fetch(ENGINE+"/analyze",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ path })
+    }).then(x=>x.json());
+    if(!r.ok){ alert("분석 실패: "+(r.error||"알 수 없음")); }
+    else{
+      renderAnom(r.anomaly);
+      await mergeEvtxTimeline();   // EVTX를 타임라인/24시계에 합쳐 표시(통합)
+      alert(`적재 ${r.records}건 완료 (총 ${r.stats?.total??"?"}건).\n타임라인에 보안 이벤트가 합쳐졌습니다. 🤖 질문해보세요.`);
+      checkEngine();
+    }
+  }catch(e){ alert("엔진 연결 실패: "+e.message); }
+  finally{ btn.disabled=false; btn.textContent="분석 시작"; }
+}
+
+// EVTX 이벤트를 part-1 타임라인(DATA.activities)에 합쳐 같은 화면/24시계에 렌더(통합 타임라인)
+async function mergeEvtxTimeline(){
+  try{
+    const r = await fetch(ENGINE+"/export_timeline").then(x=>x.json());
+    if(!r.ok || !Array.isArray(r.activities)) return;
+    if(!DATA) DATA = { meta:{tool:"통합 타임라인",version:"",sources:[],stats:{}}, activities:[] };
+    // 재분석 시 기존 evtx 제거 후 병합(중복 방지)
+    DATA.activities = DATA.activities.filter(a=>a.artifact!=="evtx").concat(r.activities);
+    initArtState(); render();
+  }catch(e){ /* 엔진 타임라인 없으면 part-1만 표시 */ }
+}
+
+// 타임라인 로드 — endpoint 별: /timeline(실제 PC 엔진) 또는 /demo_timeline(시연 정합 샘플).
+// 기존 EVTX 활동은 유지 병합.
+async function loadTimeline(endpoint, btn, labelDone){
+  const orig=btn.textContent; btn.disabled=true; btn.textContent="불러오는 중…";
+  try{
+    const r=await fetch(ENGINE+endpoint).then(x=>x.json());
+    if(r.ok && Array.isArray(r.activities)){
+      const evtx=(DATA&&Array.isArray(DATA.activities))?DATA.activities.filter(a=>a.artifact==="evtx"):[];
+      DATA={ meta:r.meta||{}, activities:r.activities.concat(evtx) };
+      initArtState(); render();
+      alert(`${labelDone} ${r.activities.length}건 로드`
+            + (r.source==="sample"?" (엔진 미발견 → 샘플)":"")
+            + (r.engine_error?`\n(엔진 메모: ${r.engine_error})`:""));
+    }else{
+      alert("타임라인 로드 실패: "+(r.error||"알 수 없음"));
+    }
+  }catch(e){ alert("엔진 연결 실패: "+e.message+"\n(서버 127.0.0.1:8765 동작 확인)"); }
+  finally{ btn.disabled=false; btn.textContent=orig; }
+}
+
+document.getElementById("startBtn").addEventListener("click", e=>loadTimeline("/timeline", e.target, "사용자 타임라인"));
+document.getElementById("tlPathBtn").addEventListener("click", e=>{
+  const p=document.getElementById("tlPath").value.trim();
+  if(!p){ alert("ActivitiesCache.db 경로를 입력하세요."); return; }
+  loadTimeline("/timeline?db="+encodeURIComponent(p), e.target, "사용자 타임라인");
+});
+// 내 PC 보안 로그 자동 수집·분석(wevtutil 복사본). 관리자 권한 권장.
+async function analyzeAuto(){
+  const btn=document.getElementById("autoBtn");
+  btn.disabled=true; btn.textContent="수집 중…";
+  try{
+    const r=await fetch(ENGINE+"/analyze_auto",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ channel:"Security" })
+    }).then(x=>x.json());
+    if(!r.ok){ alert("자동 분석 실패: "+(r.error||"알 수 없음")); }
+    else{
+      renderAnom(r.anomaly);
+      await mergeEvtxTimeline();
+      alert(`내 PC 보안 로그 ${r.records}건 분석 완료.\n🤖 질문해보세요.`);
+      checkEngine();
+    }
+  }catch(e){ alert("엔진 연결 실패: "+e.message); }
+  finally{ btn.disabled=false; btn.textContent="🖥️ 내 PC 자동"; }
+}
+
+document.getElementById("analyzeBtn").addEventListener("click", analyzeEvtx);
+document.getElementById("autoBtn").addEventListener("click", analyzeAuto);
+checkEngine();
+
+
+/* =========================================================================
+   part-1 타임라인 뷰 (팀원 산출물 — 그대로 유지). "분석 시작"/데모 로드로 표시.
+   ========================================================================= */
+const CAT = {
+  app_exec:{ico:"🖥️",label:"앱 실행",color:"#3b82f6"}, file_open:{ico:"📄",label:"파일 열람",color:"#22c55e"},
+  web_visit:{ico:"🌐",label:"웹 방문",color:"#06b6d4"}, search:{ico:"🔎",label:"검색",color:"#eab308"},
+  download:{ico:"⬇️",label:"다운로드",color:"#f97316"}, credential:{ico:"🔑",label:"자격증명",color:"#a855f7"},
+  cookie:{ico:"🍪",label:"쿠키",color:"#ec4899"},
+  // ── part-3 EVTX 보안 이벤트 ──
+  logon_ok:{ico:"✅",label:"로그온 성공",color:"#15803d"}, logon_fail:{ico:"🔑",label:"로그온 실패",color:"#dc2626"},
+  logoff:{ico:"🚪",label:"로그오프",color:"#64748b"}, priv:{ico:"⚡",label:"특수권한",color:"#7c3aed"},
+  proc:{ico:"⚙️",label:"프로세스",color:"#0ea5e9"}, account:{ico:"👤",label:"계정변경",color:"#d97706"},
+  group_add:{ico:"👥",label:"그룹추가",color:"#db2777"}, kerberos:{ico:"🎫",label:"Kerberos",color:"#9333ea"},
+  ntlm:{ico:"🔐",label:"NTLM",color:"#7c3aed"}, service:{ico:"🧩",label:"서비스",color:"#ca8a04"},
+  log_cleared:{ico:"🧹",label:"로그삭제",color:"#b91c1c"}, evtx_other:{ico:"🪟",label:"기타 보안이벤트",color:"#94a3b8"}
+};
+const ART = {
+  timeline:"OS Timeline", web_history:"웹 방문", web_search:"검색",
+  web_download:"다운로드", login_credential:"자격증명", cookie:"쿠키",
+  evtx:"보안 이벤트(EVTX)"
+};
+
+const FALLBACK = {
+  meta:{tool:"part-1 Timeline",version:"0.3",sources:[{artifact:"timeline",path:"(내장 폴백)",records:2}],
+    analyzed_at_kst:"2026-06-09T14:00:00+09:00",timezone:"Asia/Seoul (UTC+9)",
+    stats:{total:2,normal:1,carved:1,encrypted_skipped:0,decrypted_ok:0,by_artifact:{timeline:1,web_history:1}}},
+  activities:[
+    {id:"fb1",artifact:"timeline",category:"file_open",source:"normal",source_browser:null,payload_format:"json",confidence:"high",decrypted:null,app_id:"WINWORD.EXE",app_name:"Microsoft Word",title:"보고서.docx",url:"file:///C:/Users/irise/Documents/보고서.docx",detail:null,secret_value:null,start_time_kst:"2026-06-08T09:12:33+09:00",end_time_kst:null,last_modified_kst:"2026-06-08T09:12:33+09:00",raw_payload_b64:null},
+    {id:"fb2",artifact:"web_history",category:"web_visit",source:"carved",source_browser:"chrome",payload_format:"sqlite_cell",confidence:"low",decrypted:null,app_id:null,app_name:"Google Chrome",title:null,url:"https://example.com/deleted-page",detail:"freelist 카빙",secret_value:null,start_time_kst:null,end_time_kst:null,last_modified_kst:"2026-06-08T17:00:00+09:00",raw_payload_b64:null}
+  ]
+};
+
+let DATA=null;
+const state={kw:"",app:"",sort:"asc",art:{},st:{normal:true,carved:true,encrypted:true,decrypted:true}};
+
+function statusOf(a){
+  if(a.decrypted===true) return "decrypted";
+  if(a.payload_format==="encrypted") return "encrypted";
+  return a.source==="carved"?"carved":"normal";
+}
+const ST_LABEL={normal:"정상",carved:"카빙",encrypted:"암호화",decrypted:"복호화"};
+
+async function boot(){
+  try{ const r=await fetch("../sample/timeline_result.sample.json"); if(!r.ok)throw 0; DATA=await r.json(); }
+  catch(e){ try{ const r2=await fetch("./timeline_result.json"); if(r2.ok)DATA=await r2.json(); else throw 0; }
+            catch(e2){ DATA=FALLBACK; } }
+  initArtState(); render();
+}
+function initArtState(){ state.art={}; new Set(DATA.activities.map(a=>a.artifact)).forEach(a=>state.art[a]=true); }
+
+document.getElementById("kw").addEventListener("input",e=>{state.kw=e.target.value.toLowerCase();renderTimeline();});
+document.getElementById("appSel").addEventListener("change",e=>{state.app=e.target.value;renderTimeline();});
+document.getElementById("sortSel").addEventListener("change",e=>{state.sort=e.target.value;renderTimeline();});
+document.querySelectorAll(".chip[data-st]").forEach(c=>c.addEventListener("click",()=>{
+  const s=c.dataset.st; state.st[s]=!state.st[s]; c.classList.toggle("off",!state.st[s]); renderTimeline();
+}));
+
+function render(){ renderMeta(); renderArtChips(); renderAppOptions(); renderTimeline(); }
+
+function renderMeta(){
+  const m=DATA.meta||{},s=m.stats||{};
+  const srcList=(m.sources||[]).map(x=>`${ART[x.artifact]||x.artifact}(${x.records})`).join(" · ");
+  document.getElementById("metaStrip").innerHTML=`
+    <div class="stat total"><div class="n">${s.total??DATA.activities.length}</div><div class="l">전체</div></div>
+    <div class="stat normal"><div class="n">${s.normal??"-"}</div><div class="l">정상</div></div>
+    <div class="stat carved"><div class="n">${s.carved??"-"}</div><div class="l">카빙 복원</div></div>
+    <div class="meta-info">
+      <div>🗂 ${srcList||"-"}</div>
+      <div>${m.timezone||""} · 분석 ${m.analyzed_at_kst||"-"}</div>
+    </div>`;
+}
+
+function renderArtChips(){
+  const box=document.getElementById("artChips");
+  box.innerHTML=Object.keys(state.art).map(a=>{
+    const cat=DATA.activities.find(x=>x.artifact===a)?.category;
+    const ico=CAT[cat]?.ico||"•";
+    return `<span class="chip art ${state.art[a]?"":"off"}" data-art="${a}">${ico} ${ART[a]||a}</span>`;
+  }).join(" ");
+  box.querySelectorAll(".chip.art").forEach(c=>c.addEventListener("click",()=>{
+    const a=c.dataset.art; state.art[a]=!state.art[a]; c.classList.toggle("off",!state.art[a]); renderTimeline();
+  }));
+}
+
+function renderAppOptions(){
+  const sel=document.getElementById("appSel");
+  const apps=[...new Set(DATA.activities.map(a=>a.app_name).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">전체 앱/브라우저</option>'+apps.map(a=>`<option value="${a}">${a}</option>`).join("");
+}
+
+function passFilter(a){
+  if(!state.art[a.artifact]) return false;
+  if(!state.st[statusOf(a)]) return false;
+  if(state.app && a.app_name!==state.app) return false;
+  if(state.kw){
+    const hay=[a.app_name,a.title,a.url,a.detail,a.app_id].filter(Boolean).join(" ").toLowerCase();
+    if(!hay.includes(state.kw)) return false;
+  }
+  return true;
+}
+function keyTime(a){ return a.start_time_kst||a.last_modified_kst||""; }
+
+function polar(cx,cy,r,deg){ const a=(deg-90)*Math.PI/180; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+function arcPath(cx,cy,rIn,rOut,a0,a1){
+  if(a1-a0>=359.999)a1=a0+359.999;
+  const big=(a1-a0)>180?1:0;
+  const [xo0,yo0]=polar(cx,cy,rOut,a0),[xo1,yo1]=polar(cx,cy,rOut,a1);
+  const [xi1,yi1]=polar(cx,cy,rIn,a1),[xi0,yi0]=polar(cx,cy,rIn,a0);
+  return `M${xo0.toFixed(2)},${yo0.toFixed(2)} A${rOut},${rOut} 0 ${big} 1 ${xo1.toFixed(2)},${yo1.toFixed(2)} L${xi1.toFixed(2)},${yi1.toFixed(2)} A${rIn},${rIn} 0 ${big} 0 ${xi0.toFixed(2)},${yi0.toFixed(2)} Z`;
+}
+function secOfDay(iso){ if(!iso)return null; return (+iso.slice(11,13))*3600+(+iso.slice(14,16))*60+(+iso.slice(17,19)); }
+const secAng=s=>s/86400*360;
+
+function renderClock(){
+  const host=document.getElementById("clockBox");
+  const acts=DATA.activities.filter(passFilter);
+  const byDay={};
+  acts.forEach(a=>{ const t=keyTime(a); if(!t)return; (byDay[t.slice(0,10)]=byDay[t.slice(0,10)]||[]).push(a); });
+  const days=Object.keys(byDay).sort();
+  if(!days.length){ host.innerHTML='<div class="clk-head"><b>🕛 24시간 활동 시계</b></div><div class="empty" style="padding:20px">시간정보 있는 레코드 없음</div>'; return; }
+  if(!state.clockDay||!byDay[state.clockDay]) state.clockDay=days.reduce((a,b)=>byDay[b].length>byDay[a].length?b:a,days[0]);
+  const day=state.clockDay, dayActs=byDay[day];
+  const cx=160,cy=160,rOut=132,rIn=74;
+  const usedCats=new Set();
+  let seg="";
+  dayActs.slice().sort((a,b)=>secOfDay(keyTime(a))-secOfDay(keyTime(b))).forEach(a=>{
+    let s=secOfDay(a.start_time_kst||a.last_modified_kst);
+    let e=secOfDay(a.end_time_kst); if(e==null||e<=s) e=s+240; if(e>86400)e=86400;
+    let a0=secAng(s),a1=secAng(e); if(a1-a0<1.6)a1=a0+1.6;
+    const cat=CAT[a.category]||{ico:"•",color:"#888",label:a.category};
+    usedCats.add(a.category);
+    seg+=`<path d="${arcPath(cx,cy,rIn,rOut,a0,a1)}" fill="${cat.color}" stroke="#ffffff" stroke-width="0.6" class="seg"
+      data-id="${esc(a.id)}" data-app="${esc(a.app_name||"(이름없음)")}" data-title="${esc(a.title||"")}" data-ico="${cat.ico}"
+      data-time="${tt(a.start_time_kst||a.last_modified_kst)}${a.end_time_kst?(" ~ "+tt(a.end_time_kst)):""}"/>`;
+  });
+  let ticks="";
+  for(let h=0;h<24;h++){ const ang=h/24*360, big=h%6===0;
+    const [x1,y1]=polar(cx,cy,rOut,ang),[x2,y2]=polar(cx,cy,rOut+(big?9:5),ang);
+    ticks+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#c4c9d2" stroke-width="${big?1.4:0.7}"/>`;
+    if(big){ const [lx,ly]=polar(cx,cy,rOut+20,ang); ticks+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="#6b7280" font-size="12" text-anchor="middle" dominant-baseline="middle">${h}</text>`; }
+  }
+  const opts=days.map(d=>`<option value="${d}" ${d===day?"selected":""}>${d} (${byDay[d].length})</option>`).join("");
+  const leg=[...usedCats].map(k=>{const c=CAT[k]||{ico:"•",color:"#888",label:k};return `<span class="lg"><span class="sw" style="background:${c.color}"></span>${c.ico} ${c.label}</span>`;}).join("");
+  host.innerHTML=`
+    <div class="clk-head"><b>🕛 24시간 활동 시계</b>
+      <select id="clkDay">${opts}</select>
+      <span class="muted">(상단=0시, 오른쪽=6시, 아래=12시, 왼쪽=18시 · 현재 필터 반영)</span></div>
+    <div class="clk-wrap">
+      <svg viewBox="0 0 320 320" width="300" height="300">
+        <circle cx="${cx}" cy="${cy}" r="${rOut}" fill="none" stroke="#dadee4"/>
+        <circle cx="${cx}" cy="${cy}" r="${rIn}" fill="none" stroke="#dadee4"/>
+        ${ticks}${seg}
+        <text x="${cx}" y="${cy-4}" fill="#1b2330" font-size="13" text-anchor="middle">${day.slice(5)}</text>
+        <text x="${cx}" y="${cy+13}" fill="#6b7280" font-size="11" text-anchor="middle">${dayActs.length} 활동</text>
+      </svg>
+      <div class="legend">${leg}</div>
+    </div>`;
+  document.getElementById("clkDay").addEventListener("change",e=>{ state.clockDay=e.target.value; renderClock(); });
+  const tip=document.getElementById("clkTip");
+  host.querySelectorAll(".seg").forEach(p=>{
+    p.addEventListener("mousemove",ev=>{
+      tip.innerHTML=`${p.dataset.ico} <b>${p.dataset.app}</b>${p.dataset.title?("<br>"+p.dataset.title):""}<br><span class="muted">${p.dataset.time}</span>`;
+      tip.style.display="block"; tip.style.left=(ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px";
+    });
+    p.addEventListener("mouseleave",()=>{ tip.style.display="none"; });
+    p.addEventListener("click",()=>{ tip.style.display="none"; showDetail(p.dataset.id); });
+  });
+}
+
+function renderTimeline(){
+  renderClock();
+  const tl=document.getElementById("timeline");
+  let acts=DATA.activities.filter(passFilter);
+  acts.sort((x,y)=>{ const c=keyTime(x).localeCompare(keyTime(y)); return state.sort==="asc"?c:-c; });
+  if(!acts.length){ tl.innerHTML='<div class="empty">조건에 맞는 레코드 없음</div>'; return; }
+  const groups={};
+  acts.forEach(a=>{ const d=(keyTime(a)||"날짜미상").slice(0,10); (groups[d]=groups[d]||[]).push(a); });
+  const days=Object.keys(groups).sort((a,b)=> state.sort==="asc"?a.localeCompare(b):b.localeCompare(a));
+  tl.innerHTML=days.map(d=>`<div class="daygroup"><h2>📅 ${d}</h2><div class="tl">${groups[d].map(cardHTML).join("")}</div></div>`).join("");
+  tl.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>showDetail(c.dataset.id)));
+}
+function tt(iso){ return iso?iso.slice(11,19):"--:--:--"; }
+
+function cardHTML(a){
+  const st=statusOf(a), cat=CAT[a.category]||{ico:"•",label:a.category};
+  const app=a.app_name||"<span style='color:var(--muted)'>(이름없음)</span>";
+  const br=a.source_browser?`<span class="b fmt">${a.source_browser}</span>`:"";
+  return `<div class="card st-${st} ${a.source==='carved'?'carved':''}" data-id="${a.id}">
+    <div class="row1">
+      <span class="ico" title="${cat.label}">${cat.ico}</span>
+      <span class="time">${tt(keyTime(a))}</span>
+      <span class="app">${app}</span>
+      <span class="b ${st}">${ST_LABEL[st]}</span>
+      <span class="b fmt">${a.payload_format}</span>
+      ${br}
+      ${a.source==="carved"?`<span class="b fmt">conf:${a.confidence}</span>`:""}
+    </div>
+    ${a.title?`<div class="ttl">${esc(a.title)}</div>`:""}
+    ${a.url?`<div class="url">${esc(a.url)}</div>`:""}
+    ${a.decrypted===true&&a.secret_value?`<div class="secret">🔑 ${"•".repeat(8)} <span class="reveal" data-id="${a.id}">표시</span></div>`:""}
+  </div>`;
+}
+
+function showDetail(id){
+  const a=DATA.activities.find(x=>x.id===id); if(!a)return;
+  const st=statusOf(a), cat=CAT[a.category]||{ico:"•",label:a.category};
+  const kv=(k,v)=>`<div class="kv"><div class="k">${k}</div><div class="v">${v??"<span style='color:var(--muted)'>null</span>"}</div></div>`;
+  const kvm=(k,v)=>`<div class="kv"><div class="k">${k}</div><div class="v mono">${esc(v||"null")}</div></div>`;
+  let secretRow="";
+  if(a.secret_value!=null){
+    secretRow=`<div class="kv"><div class="k">secret_value (민감)</div><div class="v mono" id="sv">${"•".repeat(12)} <span class="reveal" id="svBtn">표시</span></div></div>`;
+  }
+  document.getElementById("detail").innerHTML=`
+    <span class="close" onclick="document.getElementById('aside').classList.remove('open')">✕</span>
+    <h3>${cat.ico} <span class="b ${st}">${ST_LABEL[st]}</span> ${a.app_name||"(이름없음)"}</h3>
+    ${kv("artifact",`${ART[a.artifact]||a.artifact} / ${cat.label}`)}
+    ${kv("id",a.id)}
+    ${kv("source",a.source)} ${kv("source_browser",a.source_browser)}
+    ${kv("payload_format",a.payload_format)} ${kv("confidence",a.confidence)} ${kv("decrypted",String(a.decrypted))}
+    ${kv("title",a.title?esc(a.title):null)}
+    ${kv("url",a.url?esc(a.url):null)}
+    ${kv("detail",a.detail?esc(a.detail):null)}
+    ${secretRow}
+    ${kv("start (KST)",a.start_time_kst)} ${kv("end (KST)",a.end_time_kst)} ${kv("last_modified (KST)",a.last_modified_kst)}
+    ${kvm("app_id",a.app_id)}
+    ${kvm("raw_payload_b64",a.raw_payload_b64)}`;
+  document.getElementById("aside").classList.add("open");
+  const btn=document.getElementById("svBtn");
+  if(btn) btn.addEventListener("click",()=>{ document.getElementById("sv").textContent=a.secret_value; });
+}
+
+document.getElementById("timeline").addEventListener("click",e=>{
+  if(e.target.classList.contains("reveal")){
+    e.stopPropagation();
+    const a=DATA.activities.find(x=>x.id===e.target.dataset.id);
+    if(a) e.target.parentElement.innerHTML="🔑 "+esc(a.secret_value);
+  }
+});
+
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+/* ================= AI 조사관 채팅 (part-3 로컬 /ask) ================= */
+const cpPanel=document.getElementById("copilot");
+const cpMsgs=document.getElementById("cpMsgs");
+const cpText=document.getElementById("cpText");
+const cpSend=document.getElementById("cpSend");
+let cpHistory=[];
+let cpBusy=false;
+let cpAbort=null;   // 진행 중 /ask 요청 취소용 AbortController
+
+document.getElementById("cpBtn").addEventListener("click",()=>{ cpPanel.classList.add("open"); cpText.focus(); });
+document.getElementById("cpClose").addEventListener("click",()=>cpPanel.classList.remove("open"));
+document.querySelectorAll(".cp-quick button").forEach(b=>b.addEventListener("click",()=>{ cpText.value=b.dataset.q; cpSendMsg(); }));
+cpSend.addEventListener("click",cpSendMsg);
+cpText.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); cpSendMsg(); }
+  else if(e.key==="Escape"&&cpBusy){ e.preventDefault(); cpCancel(); }
+});
+// 코파일럿 열려 있고 조사 중일 때 ESC → 취소(입력창 밖 포커스에서도 동작)
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&cpBusy&&cpPanel.classList.contains("open")){ e.preventDefault(); cpCancel(); }
+});
+
+function cpCancel(){
+  if(cpAbort){ cpAbort.abort(); }   // fetch 중단 → cpSendMsg 의 catch(AbortError)가 처리
+}
+
+function cpAdd(role,text){
+  const d=document.createElement("div");
+  d.className="cp-msg "+role;
+  d.textContent=text;
+  cpMsgs.appendChild(d);
+  cpMsgs.scrollTop=cpMsgs.scrollHeight;
+  return d;
+}
+function cpTypingOn(){
+  const d=document.createElement("div");
+  d.className="cp-typing"; d.id="cpTyping";
+  d.innerHTML='조사 중<span class="d">.</span><span class="d">.</span><span class="d">.</span> <span style="opacity:.7">(ESC로 취소)</span>';
+  cpMsgs.appendChild(d); cpMsgs.scrollTop=cpMsgs.scrollHeight;
+}
+function cpTypingOff(){ document.getElementById("cpTyping")?.remove(); }
+
+// part-3 로컬 엔진 /ask 호출. 엔진이 DB의 EVTX 이벤트를 도구로 직접 조회 → 컨텍스트 직렬화 불필요.
+async function cpSendMsg(){
+  const q=cpText.value.trim();
+  if(!q||cpBusy) return;
+  cpText.value="";
+  cpAdd("me",q);
+  cpHistory.push({role:"user",content:q});
+  cpBusy=true; cpSend.disabled=true; cpTypingOn();
+  cpAbort=new AbortController();
+  try{
+    // part-1 사용자 활동(타임라인)도 함께 보내 EVTX와 교차 분석 가능하게
+    const tl = (DATA&&Array.isArray(DATA.activities))
+      ? DATA.activities.filter(a=>a.artifact!=="evtx") : [];
+    const res=await fetch(ENGINE+"/ask",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ question:q, timeline:tl }),
+      signal:cpAbort.signal
+    });
+    const data=await res.json();
+    cpTypingOff();
+    if(data && data.answer){
+      cpAdd("ai",data.answer);
+      cpHistory.push({role:"assistant",content:data.answer});
+      const tc=(data.tool_calls||[]).map(t=>t.name).join(", ");
+      const ev=(data.evidence||[]).length;
+      if(tc||ev){
+        cpAdd("ai",`▸ 근거: 도구[${tc||"-"}] · 이벤트 ${ev}건${data.llm===false?" · 로컬LLM 미설치(자동 트리아지)":""}`);
+      }
+    }else{
+      cpAdd("err","응답이 비어 있습니다. 다시 시도해주세요.");
+      cpHistory.pop();
+    }
+  }catch(err){
+    cpTypingOff();
+    if(err.name==="AbortError"){
+      cpAdd("err","조사를 취소했습니다.");   // ESC 취소
+    }else{
+      cpAdd("err","엔진 연결 실패: "+err.message+"\n(서버 127.0.0.1:8765 동작 또는 .exe 구동 확인)");
+    }
+    cpHistory.pop();
+  }finally{
+    cpBusy=false; cpSend.disabled=false; cpAbort=null; cpText.focus();
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

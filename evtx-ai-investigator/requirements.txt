@@ -8,7 +8,7 @@ numpy>=1.26
 scikit-learn>=1.4         # Isolation Forest 이상탐지
 
 # === 로컬 LLM (AI 조사관) ===
-ollama>=0.3               # Qwen2.5 tool-calling (로컬 Ollama 서버 연동)
+ollama>=0.3               # Qwen2.5 tool-calling (로컬 Ollama 서버 연동, 오프라인·무료)
 
 # === 데스크톱 UI / .exe 패키징 (Windows 빌드 시 필요) ===
 pywebview>=5.0            # HTML 대시보드를 데스크톱 창으로 표시

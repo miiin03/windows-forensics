@@ -15,6 +15,10 @@ db/*
 # 공격 샘플 데이터셋(EVTX-ATTACK-SAMPLES, 67MB·외부 레포 — 커밋 금지)
 samples/
 
+# 데모 샘플 데이터(빌더 build_demo_db.py 로 생성 — 데이터 자체는 커밋 안 함)
+sample/*.db
+sample/*.json
+
 # 빌드 산출물
 build/
 dist/

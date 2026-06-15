@@ -70,7 +70,7 @@ def main() -> None:
     _start_engine_server()  # 번들 UI 의 fetch 대상(localhost) 먼저 띄움
 
     webview.create_window(
-        "EVTX AI 이상행위 조사관",
+        "WinTrace AI — 윈도우 통합 포렌식",
         ui_index(),
         js_api=Api(),
         width=1280,

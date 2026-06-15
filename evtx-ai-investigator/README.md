@@ -1,24 +1,25 @@
-# EVTX AI 이상행위 조사관
+# WinTrace AI — 윈도우 통합 포렌식
 
-윈도우 이벤트 로그(EVTX)를 파싱·이상탐지하고, **로컬 LLM(Qwen2.5)** 기반 AI 조사관이
-자연어 질의로 침해 흔적을 분석하는 포렌식 도구.
+윈도우 PC의 **사용자 활동 타임라인(ActivitiesCache.db 파싱+삭제기록 카빙 복구)**과
+**보안 이벤트 로그(EVTX)**를 한 화면에서 분석하고, ML(Isolation Forest)로 비정상 시점을 탐지,
+**AI 조사관**이 자연어 질의로 두 데이터를 교차 분석해 침해 정황을 설명하는 포렌식 도구.
 
-> 윈도우 포렌식 프로젝트 **3번** 파트. 이 디렉토리(`evtx-ai-investigator/`)만 담당하며
-> 다른 팀원 디렉토리는 건드리지 않는다. 상세 설계는 [`DESIGN.md`](./DESIGN.md) 참고.
+> 윈도우 포렌식 프로젝트 **3번** 파트(EVTX·AI·ML·.exe) + part-1 타임라인 엔진 통합.
+> 상세 설계는 [`DESIGN.md`](./DESIGN.md), 진행 현황은 [`PROGRESS.md`](./PROGRESS.md) 참고.
 
 ---
 
 ## 기술 스택
 - Python 3.12
-- 파싱: `python-evtx`
+- 파싱: `python-evtx`(EVTX) + vendored `windows-timeline` 엔진(ActivitiesCache.db 카빙)
 - 저장: SQLite (통합 이벤트 스토어)
-- ML: `scikit-learn` (Isolation Forest)
-- LLM: **Ollama + Qwen2.5** (로컬, 무료, 오프라인)
-- UI/배포: `pywebview`(HTML 대시보드) + `pyinstaller`(.exe)
+- ML: `scikit-learn` (Isolation Forest, 시간 윈도우 이상탐지)
+- LLM(3-tier): 개발=claude CLI / 배포=로컬 **Ollama + Qwen2.5**(오프라인·무료) / fallback
+- UI/배포: `pywebview`(HTML 대시보드) + `pyinstaller`(단일 .exe)
 
 ## 산출물
-- **단일 `.exe`** : HTML 대시보드 UI + EVTX 분석 엔진 + AI 조사관
-- 로컬 Ollama 서버와 통신 (증거 데이터는 외부로 나가지 않음)
+- **단일 `.exe`** (WinTrace AI): 대시보드 UI + 분석 엔진 + AI 조사관, 첫 실행 시 Ollama 자동 셋업
+- 배포본은 로컬 LLM 사용 → 증거 데이터가 외부로 나가지 않음(포렌식 무결성)
 
 ---
 

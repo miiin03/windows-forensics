@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EVTX AI 이상행위 조사관 (DEV 임시 UI)</title>
+<title>WinTrace AI — 윈도우 통합 포렌식</title>
+<link rel="icon" type="image/png" href="logo.png">
 <style>
   :root{
     --bg:#f3f4f6; --panel:#ffffff; --panel2:#f6f7f9; --border:#e3e6eb;
@@ -14,7 +15,8 @@
   *{box-sizing:border-box}
   body{margin:0;font-family:"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
   header{background:linear-gradient(90deg,#ffffff,#f4f6f9);padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.2px}
+  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:9px}
+  .app-logo{width:30px;height:30px;border-radius:6px;object-fit:contain}
   header .badge-tool{font-size:11px;color:var(--muted)}
   .src-load{margin-left:auto;display:flex;align-items:center;gap:8px}
   .src-load label{font-size:12px;color:var(--muted)}
@@ -132,7 +134,7 @@
 </head>
 <body>
 <header>
-  <h1>🕘 Windows Activity Forensics</h1>
+  <h1><img src="logo.png" alt="" class="app-logo">WinTrace AI</h1>
   <span class="badge-tool" id="toolVer"></span>
 </header>
 
@@ -188,8 +190,8 @@
   <div class="cp-head">
     <span style="font-size:20px">🤖</span>
     <div>
-      <div class="ttl">EVTX AI 조사관</div>
-      <div class="sub">로컬 LLM(Qwen2.5) · 적재된 윈도우 이벤트 기반 침해 분석</div>
+      <div class="ttl">WinTrace AI 조사관</div>
+      <div class="sub">사용자 활동 타임라인 + 보안 이벤트 교차 분석</div>
     </div>
     <button class="cp-close" id="cpClose" title="닫기">✕</button>
   </div>
@@ -218,25 +220,28 @@
    ========================================================================= */
 const ENGINE = "http://127.0.0.1:8765";
 
+let setupStarted = false;  // 자동 셋업 1회만 트리거(중복 방지)
+
 async function checkEngine(){
   const el = document.getElementById("setupStatus");
   try{
     const h = await fetch(ENGINE+"/health").then(r=>r.json());
     const s = await fetch(ENGINE+"/setup/status").then(r=>r.json());
     if(s.needs_setup){
-      el.innerHTML = "⚙ 로컬 LLM 셋업 필요(첫 1회) <button id='setupBtn'>설치/다운로드</button>";
-      el.querySelector("#setupBtn").onclick = startSetup;
+      // 완전 자동: 버튼 없이 첫 1회 셋업(Ollama 설치+모델 다운로드)을 곧바로 시작
+      if(!setupStarted){ setupStarted = true; el.textContent = "⚙ 로컬 LLM 첫 셋업 시작…"; startSetup(); }
     }else{
       el.textContent = `✅ 엔진 연결됨 · DB ${h.events??0}건 · 모델 ${s.model_ready?"준비됨":"미준비"}`;
     }
   }catch(e){
-    el.textContent = "❌ 엔진 미연결 — 'python -m src.server' 실행 또는 .exe 로 구동하세요";
+    el.textContent = "⏳ 엔진 시작 대기 중…";
+    setTimeout(checkEngine, 2000);  // 서버 부팅 중 → 자동 재시도
   }
 }
 
 async function startSetup(){
   const el = document.getElementById("setupStatus");
-  try{ await fetch(ENGINE+"/setup/start",{method:"POST"}); }catch(e){ el.textContent="❌ 셋업 시작 실패"; return; }
+  try{ await fetch(ENGINE+"/setup/start",{method:"POST"}); }catch(e){ el.textContent="❌ 셋업 시작 실패"; setupStarted=false; return; }
   const t = setInterval(async ()=>{
     let p; try{ p = await fetch(ENGINE+"/setup/progress").then(r=>r.json()); }catch(e){ return; }
     el.textContent = `⚙ ${p.status||p.phase} ${p.pct||0}%`;

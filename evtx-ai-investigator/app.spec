@@ -38,10 +38,11 @@ for pkg in ("sklearn", "scipy", "Evtx"):
 
 hiddenimports += collect_submodules("numpy")
 hiddenimports += collect_submodules("pandas")
+hiddenimports += collect_submodules("src")  # 우리 패키지 전체(런타임 lazy import 대비)
 
 
 a = Analysis(
-    ["src/app.py"],
+    ["launch.py"],
     pathex=[],
     binaries=binaries,
     datas=datas,
@@ -60,7 +61,8 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="app",
+    name="WinTraceAI",
+    icon="icon.ico",     # 앱 아이콘(Logo.png → icon.ico)
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

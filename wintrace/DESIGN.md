@@ -2,7 +2,7 @@
 
 > **버전:** v0.2 (2026-06-12)
 > **담당:** 윈도우 포렌식 프로젝트 3번 (EVTX AI 이상 행위 프로파일링)
-> **레포:** `github.com/miiin03/windows-forensics` → `evtx-ai-investigator/` (본인 전용 디렉토리)
+> **레포:** `github.com/miiin03/windows-forensics` → `wintrace/` (본인 전용 디렉토리)
 > **한 줄 요약:** 윈도우 이벤트 로그(EVTX)를 파싱해 통합 이벤트 스토어에 적재하고, (a) 고전 ML로 비정상 시점을 탐지한 뒤 (b) **로컬 LLM 기반 AI 조사관**이 자연어 질의로 그 근거를 분석·설명·추적하는 도구. 팀원이 만든 대시보드 UI와 묶어 **단일 `.exe`**로 배포.
 
 ---
@@ -42,11 +42,11 @@
 
 | 파트 | 담당 | 산출물 | 위치 |
 |---|---|---|---|
-| **3번 — 분석 엔진 + AI 조사관 + .exe 패키징** | **본인** | EVTX 파서, 이벤트 스토어, ML, 에이전트, JS API 브리지, `.exe` 빌드 | `evtx-ai-investigator/` |
+| **3번 — 분석 엔진 + AI 조사관 + .exe 패키징** | **본인** | EVTX 파서, 이벤트 스토어, ML, 에이전트, JS API 브리지, `.exe` 빌드 | `wintrace/` |
 | 대시보드 UI | 다른 팀원 | HTML/JS/CSS 대시보드 | 별도 디렉토리/레포 루트 (팀원 영역) |
 | 1번 — 사용자 행위 타임라인 | 또 다른 팀원 | (독립) | 팀원 영역 |
 
-- **디렉토리 격리 원칙**: 각자 본인 디렉토리만 수정. 본 파트는 `evtx-ai-investigator/` 안에서만 작업.
+- **디렉토리 격리 원칙**: 각자 본인 디렉토리만 수정. 본 파트는 `wintrace/` 안에서만 작업.
 - **UI 연동**: 팀원이 만든 대시보드 UI를 가져와 `.exe` 빌드 시 `ui/`에 두고 번들. UI는 본 파트가 만들지 않으며, **연결은 §6.2 JS API 계약**으로만 한다.
 - **증거 데이터 비커밋**: `data/`(.evtx), `db/`(생성 DB)는 `.gitignore` 처리 — 민감 데이터를 GitHub에 올리지 않음.
 
@@ -203,9 +203,9 @@ CREATE INDEX idx_anom ON events(is_anomaly);
 | LLM 연동 | `ollama` 파이썬 라이브러리 |
 | UI/배포 | `pywebview`(팀원 UI 로드) + `pyinstaller`(.exe) |
 
-### 8.2 디렉토리 (`evtx-ai-investigator/`)
+### 8.2 디렉토리 (`wintrace/`)
 ```
-evtx-ai-investigator/
+wintrace/
 ├─ DESIGN.md / README.md / requirements.txt / .gitignore
 ├─ src/
 │  ├─ parser/evtx_parser.py     # EVTX → 정규화

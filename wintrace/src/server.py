@@ -13,7 +13,7 @@ copilot 의 Anthropic fetch 를 이 서버 `/ask` 로 바꾸면 로컬 엔진(EV
   POST /setup/start        → Ollama 설치+모델 다운로드 백그라운드 시작. {"started"}
   GET  /setup/progress     → 셋업 진행률(폴링). {"phase","status","pct","done","ok","error"}
 
-실행: evtx-ai-investigator/ 에서  python -m src.server   (옵션: --port 8765 --db db/events.sqlite)
+실행: wintrace/ 에서  python -m src.server   (옵션: --port 8765 --db db/events.sqlite)
 """
 from __future__ import annotations
 

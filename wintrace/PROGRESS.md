@@ -3,7 +3,7 @@
 > **앱 이름:** **WinTrace AI** — 윈도우 통합 포렌식 (구 "EVTX AI 이상행위 조사관")
 > **기준일:** 2026-06-15
 > **담당:** 윈도우 포렌식 프로젝트 3번 (EVTX AI 이상 행위 프로파일링) + part-1 타임라인 통합
-> **레포:** `github.com/miiin03/windows-forensics` → `evtx-ai-investigator/`
+> **레포:** `github.com/miiin03/windows-forensics` → `wintrace/`
 > 설계 전문은 [`DESIGN.md`](./DESIGN.md), 본 문서는 **현재까지 구현·검증된 것** 정리.
 
 ---
@@ -100,7 +100,7 @@ LLM이 호출하는 **결정적** 도구. 실제 조회/집계는 Python이, LLM
 ## 4. 디렉토리 현황
 
 ```
-evtx-ai-investigator/
+wintrace/
 ├─ DESIGN.md / PROGRESS.md(본 문서) / README.md / requirements.txt / .gitignore
 ├─ src/
 │  ├─ parser/evtx_parser.py        # M1 ✅
@@ -127,7 +127,7 @@ evtx-ai-investigator/
 ~/.local/ollama/bin/ollama serve &
 
 # 2) 질의 서버
-cd evtx-ai-investigator
+cd wintrace
 python -m src.server                 # http://127.0.0.1:8765
 
 # 3) 테스트

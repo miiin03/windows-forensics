@@ -1,6 +1,6 @@
 """M2 도구 스모크 테스트 — 실제 샘플 DB(db/events.sqlite)로 7개 도구 호출.
 
-실행: 레포의 evtx-ai-investigator/ 에서  python -m tests.test_tools_smoke
+실행: 레포의 wintrace/ 에서  python -m tests.test_tools_smoke
 """
 from __future__ import annotations
 

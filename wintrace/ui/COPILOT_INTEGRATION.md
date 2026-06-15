@@ -8,9 +8,9 @@
 
 ## 0. 우리가 제공하는 것
 
-`evtx-ai-investigator/` 안:
+`wintrace/` 안:
 - `src/server.py` — **로컬 질의 서버**(Python 표준 라이브러리만, 설치 불필요)
-  - 실행: `cd evtx-ai-investigator && python -m src.server`  → `http://127.0.0.1:8765`
+  - 실행: `cd wintrace && python -m src.server`  → `http://127.0.0.1:8765`
 - 엔드포인트
   - `GET  /health` → `{ ok, db, events }` (적재된 이벤트 수)
   - `POST /ask  { "question": "..." }` → `{ answer, tool_calls, evidence, llm }`
@@ -146,7 +146,7 @@ if (st.needs_setup) {
 ## 5. 지금 바로 테스트(엔진만 단독)
 
 ```bash
-cd evtx-ai-investigator
+cd wintrace
 python -m src.server            # 서버 기동
 # 다른 터미널:
 curl http://127.0.0.1:8765/health

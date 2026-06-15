@@ -1,7 +1,7 @@
 # WinTrace AI — 시연 가이드
 
 > 발표/녹화용 시나리오 모음. 구현한 기능을 **무엇으로 어떻게** 보여줄지 정리.
-> 경로는 본 프로젝트 기준. 베이스: `C:\Users\irise\Desktop\kmou\4-1\디지털포렌식\windows-forensics\evtx-ai-investigator\`
+> 경로는 본 프로젝트 기준. 베이스: `C:\Users\irise\Desktop\kmou\4-1\디지털포렌식\windows-forensics\wintrace\`
 
 ---
 
@@ -22,7 +22,7 @@
 ### 1-A. 사용자 타임라인 + 카빙 복구
 ① 경로칸에 데모 db 입력 → **📁 경로 분석**
 ```
-...\evtx-ai-investigator\sample\demo_ActivitiesCache.db
+...\wintrace\sample\demo_ActivitiesCache.db
 ```
 → 한 타임라인에:
 - **초록 "정상" 4건** — 오전 정상 업무(Word·위키·검색·다운로드)
@@ -36,7 +36,7 @@
 ### 1-B. 보안 이벤트(EVTX) 합치기
 ② 경로칸에 1102 샘플 → **🛡️ 경로 분석**
 ```
-...\evtx-ai-investigator\samples\Defense Evasion\DE_1102_security_log_cleared.evtx
+...\wintrace\samples\Defense Evasion\DE_1102_security_log_cleared.evtx
 ```
 → 08:35 지점에 🧹 **감사 로그 삭제(1102)** 이벤트가 같은 타임라인에 합쳐짐, 🔴 고위험 배지
 

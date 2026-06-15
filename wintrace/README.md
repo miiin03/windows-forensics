@@ -73,7 +73,7 @@ pyinstaller app.spec            # 빌드 스펙 사용 (hiddenimports/데이터 
 
 ## 디렉토리
 ```
-evtx-ai-investigator/
+wintrace/
 ├─ DESIGN.md           # 설계서
 ├─ requirements.txt
 ├─ src/

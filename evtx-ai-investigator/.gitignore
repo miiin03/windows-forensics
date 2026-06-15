@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-win/
+venv/
+*.egg-info/
+
+# 분석 대상/산출물 (증거 데이터 — 절대 커밋 금지)
+data/*
+!data/.gitkeep
+db/*
+!db/.gitkeep
+
+# 공격 샘플 데이터셋(EVTX-ATTACK-SAMPLES, 67MB·외부 레포 — 커밋 금지)
+samples/
+
+# 데모 샘플 데이터(빌더 build_demo_db.py 로 생성 — 데이터 자체는 커밋 안 함)
+sample/*.db
+sample/*.json
+
+# 빌드 산출물
+build/
+dist/
+# 자동생성 spec 은 무시하되 우리 빌드 스펙(app.spec)은 커밋
+*.spec
+!app.spec
+
+# 번들 인스톨러(용량 큼 — 커밋 금지, 패키징 시 배치)
+vendor/*
+!vendor/README.md
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

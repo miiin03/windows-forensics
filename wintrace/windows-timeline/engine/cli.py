@@ -14,6 +14,7 @@ from engine.carver.wal import carve_wal, count_wal_frames
 from engine.dedup import deduplicate
 from engine.discovery import ActivityDbCandidate, find_activitiescache_dbs
 from engine.export import build_output, write_json
+from engine.integrity import custody_record
 from engine.ui_export import build_ui_output
 from engine.live_parser import read_activity
 from engine.normalize import normalize_records
@@ -62,6 +63,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--ui",
         action="store_true",
         help="output UI contract JSON (default: timeline_result.json)",
+    )
+    parser.add_argument(
+        "--analyzed-at",
+        metavar="ISO8601",
+        help="fix the analysis timestamp (UTC ISO8601) for reproducible output; default now",
     )
     return parser
 
@@ -164,6 +170,16 @@ def discover_candidates(args) -> list[ActivityDbCandidate]:
     return find_activitiescache_dbs(root=args.root)
 
 
+def _evidence_paths(candidates: list[ActivityDbCandidate]) -> list[str]:
+    """Evidence files on disk: each db plus its companion -wal/-shm, de-duped."""
+    paths: list[str] = []
+    for candidate in candidates:
+        for path in (candidate.db_path, candidate.wal_path, candidate.shm_path):
+            if path and path not in paths:
+                paths.append(path)
+    return paths
+
+
 def run(args) -> dict | None:
     candidates = discover_candidates(args)
     if not candidates:
@@ -172,6 +188,10 @@ def run(args) -> dict | None:
             file=sys.stderr,
         )
         return None
+
+    # Chain of custody: hash every evidence file before touching it.
+    evidence_paths = _evidence_paths(candidates)
+    evidence = [custody_record(p, stage="acquired") for p in evidence_paths]
 
     all_live = []
     all_carved = []
@@ -182,10 +202,18 @@ def run(args) -> dict | None:
         all_carved.extend(carved)
         source_infos.append(info)
 
-    if getattr(args, "ui", False):
-        return build_ui_output(all_live + all_carved, source_infos)
+    # Re-hash after analysis; equal hashes prove read-only access left evidence intact.
+    evidence += [custody_record(p, stage="verified") for p in evidence_paths]
 
-    obj = build_output(all_live, all_carved, source_infos)
+    if getattr(args, "ui", False):
+        return build_ui_output(
+            all_live + all_carved,
+            source_infos,
+            analyzed_at=getattr(args, "analyzed_at", None),
+            evidence=evidence,
+        )
+
+    obj = build_output(all_live, all_carved, source_infos, evidence=evidence)
     if args.stats_only:
         obj = {k: v for k, v in obj.items() if k != "records"}
     return obj

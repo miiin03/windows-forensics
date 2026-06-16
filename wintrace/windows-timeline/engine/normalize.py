@@ -5,10 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-# epoch 0 기준점. fromtimestamp 는 Windows 에서 음수/범위초과 epoch 에 OSError(Errno 22)를
-# 내므로, OS 호출 없는 timedelta 가산으로 변환한다. (vendored 로컬 패치)
-_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
 from engine.carver.base import CarvedCell
 from engine.live_parser import LiveRecord
 from engine.schema import (
@@ -17,6 +13,8 @@ from engine.schema import (
     DATETIME_COLUMNS,
     JSON_BLOB_COLUMNS,
 )
+
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def _guid_hex(value):
@@ -34,7 +32,10 @@ def _timestamp(value):
         epoch = int(value)
     except (TypeError, ValueError):
         return None
-    # OS 호출 없는 변환(Windows OSError 회피). 범위초과 epoch 는 iso 없이 epoch 만 보존.
+    # OS-call-free conversion. datetime.fromtimestamp raises OSError(Errno 22) on
+    # Windows for negative / out-of-range epochs (carved garbage produces those);
+    # adding a timedelta to the epoch avoids the OS call. Out-of-range epochs keep
+    # the raw epoch with iso8601=None rather than raising.
     try:
         iso = (_UNIX_EPOCH + timedelta(seconds=epoch)).isoformat().replace("+00:00", "Z")
     except (OverflowError, ValueError):

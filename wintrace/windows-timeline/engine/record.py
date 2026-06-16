@@ -39,6 +39,7 @@ class Cell:
     has_overflow: bool
     first_overflow_page: int | None
     local_payload_len: int
+    payload_truncated: bool = False
 
 
 def decode_value(serial: int, raw: bytes, encoding: str = "utf-8"):
@@ -150,12 +151,18 @@ def decode_table_leaf_cell(
     usable_size: int,
     encoding: str = "utf-8",
     overflow_reader=None,
+    page_count: int | None = None,
 ) -> Cell:
     """Decode a table-leaf cell starting at ``cell_off`` within ``page``.
 
     ``overflow_reader``, if given, is called ``reader(first_page, need_bytes)``
     to reassemble spilled payload; without it an overflowing cell decodes only
     its local prefix (callers should treat such records as truncated).
+
+    Never raises on a broken/out-of-range overflow chain: an out-of-range
+    ``first_overflow_page`` (outside ``1..page_count``), a reader that raises, or
+    a payload that comes back short all degrade to ``payload_truncated=True`` with
+    whatever columns were recoverable, rather than propagating an exception.
     """
     payload_len, off = read_varint(page, cell_off)
     rowid, off = read_varint(page, off)
@@ -165,22 +172,50 @@ def decode_table_leaf_cell(
 
     first_overflow_page = None
     payload = local_payload
+    # Local region itself shorter than expected (cell runs off the page edge).
+    payload_truncated = len(local_payload) < local_len
     if has_overflow:
-        first_overflow_page = struct.unpack(
-            ">I", page[off + local_len : off + local_len + 4]
-        )[0]
-        if overflow_reader is not None:
-            spilled = overflow_reader(first_overflow_page, payload_len - local_len)
+        ptr = page[off + local_len : off + local_len + 4]
+        if len(ptr) < 4:
+            payload_truncated = True
+        else:
+            first_overflow_page = struct.unpack(">I", ptr)[0]
+            in_range = first_overflow_page >= 1 and (
+                page_count is None or first_overflow_page <= page_count
+            )
+            spilled = b""
+            if in_range and overflow_reader is not None:
+                try:
+                    spilled = overflow_reader(first_overflow_page, payload_len - local_len) or b""
+                except (OSError, IndexError, struct.error, ValueError):
+                    spilled = b""
             payload = local_payload + spilled
+            if len(payload) < payload_len:
+                payload_truncated = True
 
-    rec = decode_record(payload, encoding)
+    # Bounds-checked decode: a short/garbled payload yields a truncated record,
+    # never a struct/index error.
+    view = try_decode_record(payload, 0, len(payload), encoding)
+    if view is None:
+        return Cell(
+            payload_len=payload_len,
+            rowid=rowid,
+            header_len=0,
+            serial_types=[],
+            values=[],
+            has_overflow=has_overflow,
+            first_overflow_page=first_overflow_page,
+            local_payload_len=local_len,
+            payload_truncated=True,
+        )
     return Cell(
         payload_len=payload_len,
         rowid=rowid,
-        header_len=rec.header_len,
-        serial_types=rec.serial_types,
-        values=rec.values,
+        header_len=view.header_len,
+        serial_types=view.serial_types,
+        values=view.values,
         has_overflow=has_overflow,
         first_overflow_page=first_overflow_page,
         local_payload_len=local_len,
+        payload_truncated=payload_truncated or view.truncated,
     )

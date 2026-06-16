@@ -18,6 +18,9 @@ samples/
 # 데모 샘플 데이터(빌더 build_demo_db.py 로 생성 — 데이터 자체는 커밋 안 함)
 sample/*.db
 sample/*.json
+# 단, 데모/대조실험·exe 번들용 합성 데모 DB와 공개 EVTX 샘플은 커밋(개인정보 없음)
+!sample/demo_ActivitiesCache.db
+!sample/evtx/
 
 # 빌드 산출물
 build/

@@ -47,9 +47,14 @@ ollama pull qwen2.5:7b      # 기본 (품질↑ 원하면 qwen2.5:14b)
 
 ## 실행 (개발 중)
 ```bash
-# 데스크톱 앱(대시보드) 실행 — 구현 후
+# 데스크톱 앱(대시보드) — Windows 네이티브에서 (pywebview GUI 필요)
 python -m src.app
+
+# 헤드리스/WSL/Linux 개발 — HTTP 서버만 띄우고 브라우저로 UI 열기
+python -m src.server          # 127.0.0.1:8765
+#   → 브라우저로 ui/index.html 열기 (또는 http://127.0.0.1:8765 가 UI 서빙 시)
 ```
+> WSL/headless 에서는 `src.app`(pywebview GUI)가 동작하지 않으므로 `src.server` 를 쓴다.
 
 ## .exe 빌드 (Windows에서만)
 > ⚠ **반드시 Windows 네이티브 Python**에서 빌드 (WSL/Linux venv 로 빌드하면 .exe 가 아니라 리눅스

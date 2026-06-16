@@ -64,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="output UI contract JSON (default: timeline_result.json)",
     )
+    parser.add_argument(
+        "--analyzed-at",
+        metavar="ISO8601",
+        help="fix the analysis timestamp (UTC ISO8601) for reproducible output; default now",
+    )
     return parser
 
 
@@ -201,7 +206,12 @@ def run(args) -> dict | None:
     evidence += [custody_record(p, stage="verified") for p in evidence_paths]
 
     if getattr(args, "ui", False):
-        return build_ui_output(all_live + all_carved, source_infos, evidence=evidence)
+        return build_ui_output(
+            all_live + all_carved,
+            source_infos,
+            analyzed_at=getattr(args, "analyzed_at", None),
+            evidence=evidence,
+        )
 
     obj = build_output(all_live, all_carved, source_infos, evidence=evidence)
     if args.stats_only:

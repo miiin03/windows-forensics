@@ -4,7 +4,7 @@ import json
 
 from engine.carver.base import CarvedCell
 from engine.live_parser import LiveRecord
-from engine.normalize import normalize_record
+from engine.normalize import _timestamp, normalize_record
 from engine.schema import ACTIVITY_COLUMN_NAMES, column_index
 
 
@@ -94,3 +94,28 @@ def test_normalize_carved_cell_maps_column_indexes_and_preserves_provenance():
         "serial_types": [0] * len(ACTIVITY_COLUMN_NAMES),
         "decode_errors": ["tail truncated"],
     }
+
+
+# --- Windows-safe timestamp conversion (no datetime.fromtimestamp OS call) ----
+# fromtimestamp raises OSError(Errno 22) on Windows for negative / out-of-range
+# epochs; carved garbage routinely produces those. Conversion must never raise.
+
+def test_timestamp_epoch_zero():
+    assert _timestamp(0) == {"epoch": 0, "iso8601": "1970-01-01T00:00:00Z"}
+
+
+def test_timestamp_negative_epoch_no_raise():
+    ts = _timestamp(-1)
+    assert ts["epoch"] == -1
+    assert ts["iso8601"] == "1969-12-31T23:59:59Z"
+
+
+def test_timestamp_out_of_range_keeps_epoch_iso_none():
+    # ~3.17 million years: timedelta overflows datetime. Preserve epoch, iso=None.
+    ts = _timestamp(99999999999999)
+    assert ts == {"epoch": 99999999999999, "iso8601": None}
+
+
+def test_timestamp_negative_out_of_range_keeps_epoch_iso_none():
+    ts = _timestamp(-99999999999999)
+    assert ts == {"epoch": -99999999999999, "iso8601": None}

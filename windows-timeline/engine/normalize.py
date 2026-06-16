@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from engine.carver.base import CarvedCell
 from engine.live_parser import LiveRecord
@@ -13,6 +13,8 @@ from engine.schema import (
     DATETIME_COLUMNS,
     JSON_BLOB_COLUMNS,
 )
+
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def _guid_hex(value):
@@ -30,7 +32,14 @@ def _timestamp(value):
         epoch = int(value)
     except (TypeError, ValueError):
         return None
-    iso = datetime.fromtimestamp(epoch, timezone.utc).isoformat().replace("+00:00", "Z")
+    # OS-call-free conversion. datetime.fromtimestamp raises OSError(Errno 22) on
+    # Windows for negative / out-of-range epochs (carved garbage produces those);
+    # adding a timedelta to the epoch avoids the OS call. Out-of-range epochs keep
+    # the raw epoch with iso8601=None rather than raising.
+    try:
+        iso = (_UNIX_EPOCH + timedelta(seconds=epoch)).isoformat().replace("+00:00", "Z")
+    except (OverflowError, ValueError):
+        iso = None
     return {"epoch": epoch, "iso8601": iso}
 
 

@@ -36,6 +36,15 @@ def analyze_evtx(
     if not path or not os.path.exists(path):
         return {"ok": False, "error": f"파일을 찾을 수 없습니다: {path}"}
 
+    # EVTX 매직 검증 — 비-EVTX(잘못 고른 파일)를 "0건 성공"으로 위장하지 않는다.
+    try:
+        with open(path, "rb") as f:
+            magic = f.read(8)
+    except OSError as e:
+        return {"ok": False, "error": f"파일을 열 수 없습니다: {e}"}
+    if magic != b"ElfFile\x00":
+        return {"ok": False, "error": "EVTX 파일이 아닙니다(.evtx 필요)"}
+
     from .parser.evtx_parser import parse_evtx  # 지연 import (python-evtx)
 
     try:

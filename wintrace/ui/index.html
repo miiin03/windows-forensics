@@ -228,8 +228,18 @@ async function checkEngine(){
     const h = await fetch(ENGINE+"/health").then(r=>r.json());
     const s = await fetch(ENGINE+"/setup/status").then(r=>r.json());
     if(s.needs_setup){
-      // 완전 자동: 버튼 없이 첫 1회 셋업(Ollama 설치+모델 다운로드)을 곧바로 시작
-      if(!setupStarted){ setupStarted = true; el.textContent = "⚙ 로컬 LLM 첫 셋업 시작…"; startSetup(); }
+      // 동의 없는 자동 설치 금지: 멀티 GB Ollama 설치는 사용자가 버튼을 눌러야만 시작.
+      // (setupStarted 이면 startSetup 진행상황 텍스트를 덮어쓰지 않는다.)
+      if(!setupStarted){
+        el.innerHTML = '로컬 LLM(Ollama) 미설치 — AI 질의 기능에 필요(수 GB 다운로드). '
+          + '<button id="setupBtn" type="button">로컬 LLM 설치</button>';
+        const b = document.getElementById("setupBtn");
+        if(b) b.addEventListener("click", ()=>{
+          if(setupStarted) return;
+          setupStarted = true; b.disabled = true;
+          el.textContent = "⚙ 로컬 LLM 셋업 시작…"; startSetup();
+        });
+      }
     }else{
       el.textContent = `✅ 엔진 연결됨 · DB ${h.events??0}건 · 모델 ${s.model_ready?"준비됨":"미준비"}`;
     }

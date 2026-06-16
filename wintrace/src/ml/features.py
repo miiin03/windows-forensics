@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-import pandas as pd
+# pandas 는 무거운 선택 의존 → 모듈 top 에서 import 하지 않고 build_features 안에서 지연 import.
+# (없어도 이 모듈 import 는 성공해야 server/pipeline 이 살아남는다.)
 
 # 피처에 쓰는 이벤트ID (DESIGN.md §4.1)
 _EID_FAIL = 4625        # 로그온 실패
@@ -59,6 +60,8 @@ def build_features(conn, window_minutes: int = 60) -> pd.DataFrame:
 
     각 행은 한 시간 윈도우. 컬럼은 FEATURE_COLUMNS(수치). 이벤트가 없으면 빈 DataFrame.
     """
+    import pandas as pd  # 지연 import (무거운 선택 의존)
+
     cur = conn.execute(
         "SELECT event_id, time_utc, account, source_ip FROM events WHERE time_utc IS NOT NULL"
     )

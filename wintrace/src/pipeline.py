@@ -13,8 +13,10 @@ import sys
 from .store.store import open_db, insert_events
 from .agent.tools_query import summarize_stats
 from .agent.tools_analysis import find_security_events
-from .ml.anomaly import run_anomaly_detection
 from .paths import default_db_path, resource_base
+
+# run_anomaly_detection(.ml.anomaly)은 pandas/scikit-learn 에 의존 → 함수 안에서 지연 import.
+# ML 스택이 없어도 /analyze(ML 생략)·/timeline·/export 는 동작해야 한다.
 
 
 def analyze_evtx(
@@ -51,9 +53,16 @@ def analyze_evtx(
 
         anomaly = None
         if run_ml and inserted:
-            anomaly = run_anomaly_detection(
-                conn, window_minutes=window_minutes, contamination=contamination
-            )
+            try:
+                from .ml.anomaly import run_anomaly_detection
+                anomaly = run_anomaly_detection(
+                    conn, window_minutes=window_minutes, contamination=contamination
+                )
+            except ImportError as e:
+                # pandas/scikit-learn 미설치 → 이상탐지만 생략하고 적재/규칙탐지는 계속.
+                anomaly = {"ok": True, "fitted": False, "high_risk": False,
+                           "windows": 0, "anomaly_windows": 0, "anomalies": [],
+                           "note": f"ML 의존성(pandas/scikit-learn) 미설치로 이상탐지를 생략했습니다: {e}"}
         # 규칙 기반 고위험 탐지(1102 로그삭제/4720 계정생성/7045 서비스 등)는 ML 학습 여부와
         # 무관하게 항상 수행 — 데이터가 적어 ML이 쉬어도 고위험 정황은 놓치지 않는다.
         sec = find_security_events(conn)
@@ -138,6 +147,12 @@ def run_anomaly(
         return {"ok": False, "error": "이벤트 DB가 없습니다. 먼저 EVTX를 분석(적재)하세요."}
     conn = open_db(db_path)
     try:
+        try:
+            from .ml.anomaly import run_anomaly_detection
+        except ImportError as e:
+            return {"ok": False, "fitted": False, "high_risk": False, "windows": 0,
+                    "anomaly_windows": 0, "anomalies": [],
+                    "error": f"ML 의존성(pandas/scikit-learn) 미설치 — 이상탐지 불가: {e}"}
         return run_anomaly_detection(
             conn, window_minutes=window_minutes, contamination=contamination
         )

@@ -6,9 +6,9 @@ score_samples 원값(낮을수록 비정상, schema 주석과 일치).
 """
 from __future__ import annotations
 
-import pandas as pd
-from sklearn.ensemble import IsolationForest
-
+# pandas / scikit-learn 은 무거운 선택 의존 → 모듈 top 에서 import 하지 않고 detect_anomalies
+# 안에서 지연 import. 이 모듈 import 자체는 ML 스택 없이도 성공해야 pipeline/server 가 살아남는다.
+# (타입 힌트의 pd.DataFrame 은 `from __future__ import annotations` 로 평가되지 않으므로 안전.)
 from .features import FEATURE_COLUMNS, build_features, window_key
 
 # IsolationForest 가 통계적으로 의미를 가지려면 최소 윈도우 수 필요.
@@ -45,6 +45,9 @@ def detect_anomalies(features: pd.DataFrame, contamination: float = 0.02) -> pd.
 
     윈도우 수 < MIN_WINDOWS 면 학습하지 않고 score=0.0, is_anomaly=0 으로 반환.
     """
+    import pandas as pd  # 지연 import (무거운 선택 의존)
+    from sklearn.ensemble import IsolationForest
+
     out = pd.DataFrame(index=features.index.copy())
     if len(features) < MIN_WINDOWS:
         out["anomaly_score"] = 0.0

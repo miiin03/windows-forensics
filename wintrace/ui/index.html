@@ -143,14 +143,14 @@
   <div class="tb-group">
     <span class="tb-label">① 사용자 타임라인</span>
     <input type="text" id="tlPath" placeholder="ActivitiesCache.db 경로 직접 입력">
-    <button id="tlPathBtn">📁 경로 분석</button>
+    <button id="tlPathBtn">📁 타임라인 분석</button>
     <button id="startBtn" class="ghost" title="내 PC ActivitiesCache.db 자동 탐색">🖥️ 내 PC 자동</button>
   </div>
   <div class="tb-sep"></div>
   <div class="tb-group">
     <span class="tb-label">② 보안 이벤트(EVTX)</span>
     <input type="text" id="evtxPath" placeholder=".evtx 경로 직접 입력">
-    <button id="analyzeBtn">🛡️ 경로 분석</button>
+    <button id="analyzeBtn">🛡️ EVTX 분석</button>
     <button id="autoBtn" class="ghost" title="내 PC 보안 로그 자동 수집(관리자 권장)">🖥️ 내 PC 자동</button>
   </div>
   <div class="tb-sep"></div>
@@ -296,7 +296,7 @@ async function analyzeEvtx(){
       checkEngine();
     }
   }catch(e){ alert("엔진 연결 실패: "+e.message); }
-  finally{ btn.disabled=false; btn.textContent="분석 시작"; }
+  finally{ btn.disabled=false; btn.textContent="🛡️ EVTX 분석"; }
 }
 
 // EVTX 이벤트를 part-1 타임라인(DATA.activities)에 합쳐 같은 화면/24시계에 렌더(통합 타임라인)

@@ -301,6 +301,7 @@ def build_ui_output(
     source_files: list[dict],
     *,
     analyzed_at: str | None = None,
+    evidence: list[dict] | None = None,
 ) -> dict:
     """Convert normalize_records() output to the UI contract JSON.
 
@@ -308,6 +309,7 @@ def build_ui_output(
         records: All normalized Activity records (live + carved combined).
         source_files: Source file info dicts from the CLI pipeline.
         analyzed_at: UTC ISO8601 timestamp; defaults to now.
+        evidence: Chain-of-custody hash records for the source evidence files.
 
     Returns:
         Dict matching the UI contract schema in UI-CONTRACT.md.
@@ -342,6 +344,7 @@ def build_ui_output(
             "sources": sources_meta,
             "analyzed_at_kst": _utc_to_kst(analyzed_at),
             "timezone": "Asia/Seoul (UTC+9)",
+            "evidence": evidence or [],
             "stats": {
                 "total": len(activities),
                 "normal": normal_n,

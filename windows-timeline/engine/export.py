@@ -31,7 +31,13 @@ def _source_file(info: dict) -> dict:
     }
 
 
-def build_output(live: list[dict], carved: list[dict], source_file_info: dict | list[dict]) -> dict:
+def build_output(
+    live: list[dict],
+    carved: list[dict],
+    source_file_info: dict | list[dict],
+    *,
+    evidence: list[dict] | None = None,
+) -> dict:
     records = list(live) + list(carved)
     infos = source_file_info if isinstance(source_file_info, list) else [source_file_info]
     source_files = [_source_file(info) for info in infos]
@@ -40,6 +46,7 @@ def build_output(live: list[dict], carved: list[dict], source_file_info: dict | 
         "tool": "windows-timeline",
         "source_file": source_files[0] if source_files else {},
         "source_files": source_files,
+        "evidence": evidence or [],
         "stats": {
             "live": len(live),
             "carved_total": len(carved),

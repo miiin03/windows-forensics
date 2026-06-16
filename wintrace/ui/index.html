@@ -161,6 +161,7 @@
 </div>
 
 <div class="meta" id="metaStrip"></div>
+<div id="sampleBanner" style="display:none;background:#b45309; color:#fff; padding:8px 12px; border-radius:6px; margin:6px 0; font-weight:700; letter-spacing:.02em;"></div>
 
 <div class="filters">
   <input type="text" id="kw" placeholder="🔍 키워드 (앱·제목·URL·detail)">
@@ -319,7 +320,7 @@ async function loadTimeline(endpoint, btn, labelDone){
     const r=await fetch(ENGINE+endpoint).then(x=>x.json());
     if(r.ok && Array.isArray(r.activities)){
       const evtx=(DATA&&Array.isArray(DATA.activities))?DATA.activities.filter(a=>a.artifact==="evtx"):[];
-      DATA={ meta:r.meta||{}, activities:r.activities.concat(evtx) };
+      DATA={ meta:Object.assign({}, r.meta||{}, {source:r.source}), activities:r.activities.concat(evtx) };
       initArtState(); render();
       alert(`${labelDone} ${r.activities.length}건 로드`
             + (r.source==="sample"?" (엔진 미발견 → 샘플)":"")
@@ -405,9 +406,13 @@ function statusOf(a){
 const ST_LABEL={normal:"정상",carved:"카빙",encrypted:"암호화",decrypted:"복호화"};
 
 async function boot(){
-  try{ const r=await fetch("../sample/timeline_result.sample.json"); if(!r.ok)throw 0; DATA=await r.json(); }
+  // 초기 화면은 합성 샘플(실데이터 아님) — 경로 교정 + source 태깅으로 배너가 뜨게 한다.
+  try{
+    const r=await fetch("../windows-timeline/sample/timeline_result.sample.json"); if(!r.ok)throw 0;
+    DATA=await r.json(); DATA.meta=Object.assign({}, DATA.meta, {source:"sample"});
+  }
   catch(e){ try{ const r2=await fetch("./timeline_result.json"); if(r2.ok)DATA=await r2.json(); else throw 0; }
-            catch(e2){ DATA=FALLBACK; } }
+            catch(e2){ DATA=FALLBACK; DATA.meta=Object.assign({}, DATA.meta, {source:"sample"}); } }
   initArtState(); render();
 }
 function initArtState(){ state.art={}; new Set(DATA.activities.map(a=>a.artifact)).forEach(a=>state.art[a]=true); }
@@ -419,7 +424,19 @@ document.querySelectorAll(".chip[data-st]").forEach(c=>c.addEventListener("click
   const s=c.dataset.st; state.st[s]=!state.st[s]; c.classList.toggle("off",!state.st[s]); renderTimeline();
 }));
 
-function render(){ renderMeta(); renderArtChips(); renderAppOptions(); renderTimeline(); }
+function render(){ renderSampleBanner(); renderMeta(); renderArtChips(); renderAppOptions(); renderTimeline(); }
+
+function renderSampleBanner(){
+  const el=document.getElementById("sampleBanner");
+  if(!el) return;
+  const src=(DATA.meta||{}).source;
+  if(src==="sample"||src==="demo"){
+    el.textContent="⚠ 샘플/데모 데이터입니다 (실제 분석 결과 아님)";
+    el.style.display="block";
+  }else{
+    el.style.display="none";
+  }
+}
 
 function renderMeta(){
   const m=DATA.meta||{},s=m.stats||{};
